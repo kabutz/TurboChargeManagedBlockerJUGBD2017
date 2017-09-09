@@ -9,6 +9,8 @@ import java.util.concurrent.*;
 // 3. test100_000_000() time = 17573
 // 4. test100_000_000() time = 12742
 // 5. test100_000_000() time = 9941
+// 6. test100_000_000() time = 9063
+
 
 // TODO: Sign up to Heinz's Newsletter: www.javaspecialists.eu
 public class Fibonacci {
@@ -54,17 +56,39 @@ public class Fibonacci {
                 }
             }
         } else if (result == RESERVED) { // someone else is busy with this number - wait
-            synchronized (RESERVED) {
-                try {
-                    while((result = cache.get(n)) == RESERVED) {
-                        RESERVED.wait();
-                    }
-                } catch (InterruptedException e) {
-                    throw new CancellationException("interrupted");
-                }
+            try {
+                FibonacciReservedBlocker blocker = new FibonacciReservedBlocker(n, cache);
+                ForkJoinPool.managedBlock(blocker);
+                result = blocker.result;
+                assert result != RESERVED;
+                assert result != null;
+            } catch (InterruptedException e) {
+                throw new CancellationException("interrupted");
             }
 
         }
         return result;
+    }
+
+    private final class FibonacciReservedBlocker implements ForkJoinPool.ManagedBlocker {
+        private final int n;
+        private final Map<Integer, BigInteger> cache;
+        private BigInteger result;
+
+        public FibonacciReservedBlocker(int n, Map<Integer, BigInteger> cache) {
+            this.n = n;
+            this.cache = cache;
+        }
+
+        public boolean isReleasable() { // condition predicate
+            return (result = cache.get(n)) != RESERVED;
+        }
+
+        public boolean block() throws InterruptedException {
+            synchronized (RESERVED) {
+                while (!isReleasable()) RESERVED.wait();
+            }
+            return true;
+        }
     }
 }
