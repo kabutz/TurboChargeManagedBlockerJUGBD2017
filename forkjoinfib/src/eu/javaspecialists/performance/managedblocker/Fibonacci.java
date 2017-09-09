@@ -5,6 +5,7 @@ import java.util.concurrent.*;
 
 // 1. test100_000_000() time = 55152
 // 2. test100_000_000() time = 28813
+// 3. test100_000_000() time = 17573
 
 // TODO: Sign up to Heinz's Newsletter: www.javaspecialists.eu
 public class Fibonacci {
